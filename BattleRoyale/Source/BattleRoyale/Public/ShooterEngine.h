@@ -5,7 +5,7 @@
 #include "ShooterEngine.generated.h"
 
 UCLASS()
-class SHOOTERGAME_API UShooterEngine : public UGameEngine
+class BATTLEROYALE_API UShooterEngine : public UGameEngine
 {
 	GENERATED_UCLASS_BODY()
 

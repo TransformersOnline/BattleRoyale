@@ -29,7 +29,7 @@ struct FBattleRoyaleSessionParams
 };
 
 UCLASS(config=Game)
-class SHOOTERGAME_API ABattleRoyaleSession : public AGameSession
+class BATTLEROYALE_API ABattleRoyaleSession : public AGameSession
 {
 	GENERATED_UCLASS_BODY()
 
