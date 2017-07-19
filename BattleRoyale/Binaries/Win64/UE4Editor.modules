@@ -1,9 +1,10 @@
 {
-	"Changelist" : 3452394,
-	"BuildId" : "3b4a7172-9407-4d67-93ef-2f9e6ae50c92",
+	"Changelist" : 3514769,
+	"CompatibleChangelist" : 3452394,
+	"BuildId" : "9d235d2e-0699-4a67-a724-267cd6977962",
 	"Modules" : 
 	{
-		"ShooterGame" : "UE4Editor-ShooterGame.dll",
-		"ShooterGameLoadingScreen" : "UE4Editor-ShooterGameLoadingScreen.dll"
+		"BattleRoyale" : "UE4Editor-BattleRoyale.dll",
+		"BattleRoyaleLoadingScreen" : "UE4Editor-BattleRoyaleLoadingScreen.dll"
 	}
 }

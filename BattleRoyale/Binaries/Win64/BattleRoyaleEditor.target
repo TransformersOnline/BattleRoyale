@@ -1,15 +1,15 @@
 {
-	"TargetName" : "ShooterGameEditor",
+	"TargetName" : "BattleRoyaleEditor",
 	"Platform" : "Win64",
 	"Configuration" : "Development",
-	"BuildId" : "3b4a7172-9407-4d67-93ef-2f9e6ae50c92",
+	"BuildId" : "9d235d2e-0699-4a67-a724-267cd6977962",
 	"Version" : 
 	{
 		"MajorVersion" : 4,
 		"MinorVersion" : 16,
-		"PatchVersion" : 0,
-		"Changelist" : 3452394,
-		"CompatibleChangelist" : 0,
+		"PatchVersion" : 2,
+		"Changelist" : 3514769,
+		"CompatibleChangelist" : 3452394,
 		"IsLicenseeVersion" : 0,
 		"IsPromotedBuild" : 1,
 		"BranchName" : "++UE4+Release-4.16"
@@ -1012,15 +1012,15 @@
 			"IsPrecompiled" : true
 		},
 		{
-			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-ShooterGame.dll",
+			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-BattleRoyale.dll",
 			"Type" : "DynamicLibrary"
 		},
 		{
-			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-ShooterGame.pdb",
+			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-BattleRoyale.pdb",
 			"Type" : "SymbolFile"
 		},
 		{
-			"Path" : "$(ProjectDir)/Intermediate/Build/Win64/UE4Editor/Development/UE4Editor-ShooterGame.lib",
+			"Path" : "$(ProjectDir)/Intermediate/Build/Win64/UE4Editor/Development/UE4Editor-BattleRoyale.lib",
 			"Type" : "ImportLibrary"
 		},
 		{
@@ -5569,15 +5569,15 @@
 			"IsPrecompiled" : true
 		},
 		{
-			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-ShooterGameLoadingScreen.dll",
+			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-BattleRoyaleLoadingScreen.dll",
 			"Type" : "DynamicLibrary"
 		},
 		{
-			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-ShooterGameLoadingScreen.pdb",
+			"Path" : "$(ProjectDir)/Binaries/Win64/UE4Editor-BattleRoyaleLoadingScreen.pdb",
 			"Type" : "SymbolFile"
 		},
 		{
-			"Path" : "$(ProjectDir)/Intermediate/Build/Win64/UE4Editor/Development/UE4Editor-ShooterGameLoadingScreen.lib",
+			"Path" : "$(ProjectDir)/Intermediate/Build/Win64/UE4Editor/Development/UE4Editor-BattleRoyaleLoadingScreen.lib",
 			"Type" : "ImportLibrary"
 		},
 		{
@@ -5588,7 +5588,7 @@
 	"RuntimeDependencies" :
 	[
 		{
-			"Path" : "$(ProjectDir)/ShooterGame.uproject",
+			"Path" : "$(ProjectDir)/BattleRoyale.uproject",
 			"Type" : "UFS"
 		},
 		{
