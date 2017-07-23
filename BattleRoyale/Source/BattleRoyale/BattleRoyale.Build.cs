@@ -27,7 +27,9 @@ public class BattleRoyale : ModuleRules
 				"AssetRegistry",
                 "AIModule",
 				"GameplayTasks",
-			}
+                "Landscape",
+                "PhysXVehicles"
+            }
 		);
 
         PrivateDependencyModuleNames.AddRange(
