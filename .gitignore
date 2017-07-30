@@ -30,3 +30,14 @@
 *.exe
 *.out
 *.app
+*.suo
+*.db
+*.opendb
+*.sln
+*.pdb
+*.dll
+*.dll
+*.bin
+*.log
+BattleRoyale\Intermediate\
+BattleRoyale\Saved\
