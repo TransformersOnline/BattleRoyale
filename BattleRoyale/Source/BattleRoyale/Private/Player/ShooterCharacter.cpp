@@ -55,6 +55,16 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_PROJECTILE, ECR_Block);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_WEAPON, ECR_Ignore);
 
+	// Create a SpringArmComponent to attach the camera
+	CameraBoom = ObjectInitializer.CreateDefaultSubobject<USpringArmComponent>(this, TEXT("CamreaBoom"));
+	CameraBoom->SetupAttachment(GetCapsuleComponent());
+	CameraBoom->bUsePawnControlRotation = true;
+
+	CharacterCameraComponent = ObjectInitializer.CreateDefaultSubobject<UCameraComponent>(this, TEXT("Camera"));
+	CharacterCameraComponent->SetupAttachment(CameraBoom);
+	CharacterCameraComponent->SetRelativeLocation(FVector(0, 0, 0));
+	CharacterCameraComponent->SetRelativeRotation(FRotator(0, 0, 0));
+
 	TargetingSpeedModifier = 0.5f;
 	bIsTargeting = false;
 	RunningSpeedModifier = 1.5f;
@@ -119,6 +129,8 @@ void AShooterCharacter::PawnClientRestart()
 	// set team colors for 1st person view
 	UMaterialInstanceDynamic* Mesh1PMID = Mesh1P->CreateAndSetMaterialInstanceDynamic(0);
 	UpdateTeamColors(Mesh1PMID);
+
+	HandleViewChanged();
 }
 
 void AShooterCharacter::PossessedBy(class AController* InController)
@@ -184,6 +196,11 @@ void AShooterCharacter::UpdatePawnMeshes()
 
 	GetMesh()->MeshComponentUpdateFlag = bFirstPerson ? EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered : EMeshComponentUpdateFlag::AlwaysTickPoseAndRefreshBones;
 	GetMesh()->SetOwnerNoSee(bFirstPerson);
+
+	if (GetWeapon())
+	{
+		GetWeapon()->HandleLocalPawnChangeView(bFirstPerson);
+	}
 }
 
 void AShooterCharacter::UpdateTeamColors(UMaterialInstanceDynamic* UseMID)
@@ -872,6 +889,12 @@ void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 
 void AShooterCharacter::MoveForward(float Val)
 {
+	if (CurrentCar)
+	{
+		CurrentCar->MoveForward(Val);
+		return;
+	}
+
 	if (Controller && Val != 0.f)
 	{
 		// Limit pitch when walking or falling
@@ -884,6 +907,12 @@ void AShooterCharacter::MoveForward(float Val)
 
 void AShooterCharacter::MoveRight(float Val)
 {
+	if (CurrentCar)
+	{
+		CurrentCar->MoveRight(Val);
+		return;
+	}
+
 	if (Val != 0.f)
 	{
 		const FQuat Rotation = GetActorQuat();
@@ -1250,6 +1279,12 @@ bool AShooterCharacter::IsFiring() const
 
 bool AShooterCharacter::IsFirstPerson() const
 {
+	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(GetController());
+	if (MyPC && MyPC->IsLocalPlayerController() && !MyPC->bFirstPersonView)
+	{
+		return false;
+	}
+
 	return IsAlive() && Controller && Controller->IsLocalPlayerController();
 }
 
@@ -1291,4 +1326,95 @@ void AShooterCharacter::BuildPauseReplicationCheckPoints(TArray<FVector>& Releva
 	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
 	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X - XDiff, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
 	RelevancyCheckPoints.Add(BoundingBox.Max);
+}
+
+// 角色镜头位置计算
+void AShooterCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	if (bFindCameraComponentWhenViewTarget && CharacterCameraComponent && CharacterCameraComponent->bIsActive)
+	{
+		// don't allow FOV override, we handle that in UTPlayerController/UTPlayerCameraManager
+		CharacterCameraComponent->GetCameraView(DeltaTime, OutResult);
+
+		if (Controller && Controller->IsLocalController())
+		{
+			if (GetWeapon() != nullptr)
+			{
+				//FRotator AdjustRotator = GetWeapon()->GetCurCameraOffsetRotation();
+				//OutResult.Rotation += AdjustRotator;   // 加上射击对镜头偏移的影响
+
+				//FTransform AdjustTransform = GetWeapon()->GetCurCameraOffsetTransform();
+				//OutResult.Location += AdjustTransform.GetLocation();
+				//OutResult.Rotation += AdjustTransform.GetRotation().Rotator();
+			}
+		}
+	}
+	else
+	{
+		GetActorEyesViewPoint(OutResult.Location, OutResult.Rotation);
+	}
+}
+
+void AShooterCharacter::HandleViewChanged()
+{
+	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(GetController());
+	if (MyPC)
+	{
+		if (CameraBoom)
+		{
+			if (MyPC->bFirstPersonView)
+			{
+				CameraBoom->TargetArmLength = 0.f;
+			}
+			else
+			{
+				if (IsInCar())
+				{
+					CameraBoom->TargetArmLength = 300.f;
+				}
+				else
+				{
+					CameraBoom->TargetArmLength = 100.f;
+				}
+			}
+
+			UpdatePawnMeshes();
+		}
+	}
+}
+
+void AShooterCharacter::DriveCar(ABuggyPawn* Car)
+{
+	if (CurrentCar != nullptr)
+	{
+		LeaveCar();
+	}
+	
+	bUseControllerRotationYaw = false;
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Ignore);
+	AttachToActor(Car, FAttachmentTransformRules::SnapToTargetNotIncludingScale,FName(TEXT("Driver0")));
+	CurrentCar = Car;
+	HandleViewChanged();
+	UCharacterMovementComponent* pMovementComponent = GetCharacterMovement();
+	if (pMovementComponent)
+	{
+		pMovementComponent->StopMovementImmediately();
+		pMovementComponent->DisableMovement();
+		pMovementComponent->SetComponentTickEnabled(false);
+	}
+}
+
+void AShooterCharacter::LeaveCar()
+{
+	bUseControllerRotationYaw = true;
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	CurrentCar = nullptr;
+	HandleViewChanged();
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Block);
+	UCharacterMovementComponent* pMovementComponent = GetCharacterMovement();
+	if (pMovementComponent)
+	{
+		pMovementComponent->SetDefaultMovementMode();
+		pMovementComponent->SetComponentTickEnabled(true);
+	}
 }

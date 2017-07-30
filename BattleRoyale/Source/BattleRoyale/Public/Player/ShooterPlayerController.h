@@ -177,6 +177,18 @@ public:
 
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
 
+	void ChangePersonView();
+
+	void FreeView();
+
+	void LockView();
+
+	void PickTarget();
+
+	AActor*	PickTheNeareatActor();
+
+	void GetInTheCar(ABuggyPawn* Car);
+
 protected:
 
 	/** infinite ammo cheat */
@@ -280,9 +292,13 @@ public:
 	// For tracking whether or not to send the end event
 	bool bHasSentStartEvents;
 
+	bool bFirstPersonView = false;
+
 private:
 
 	/** Handle for efficient management of ClientStartOnlineGame timer */
 	FTimerHandle TimerHandle_ClientStartOnlineGame;
+
+	FRotator CachedControlRotation;
 };
 

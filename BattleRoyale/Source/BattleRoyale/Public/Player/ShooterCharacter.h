@@ -36,6 +36,8 @@ class AShooterCharacter : public ACharacter
 	/** [client] called when replication is paused for this actor */
 	virtual void OnReplicationPausedChanged(bool bIsReplicationPaused) override;
 
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
+
 	/**
 	* Add camera pitch to first person mesh.
 	*
@@ -256,11 +258,15 @@ class AShooterCharacter : public ACharacter
 
 	/** Update the team color of all player meshes. */
 	void UpdateTeamColorsAllMIDs();
+
+	void HandleViewChanged();
+
 private:
 
 	/** pawn mesh: 1st person view */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* Mesh1P;
+
 protected:
 
 	/** socket or bone name for attaching weapon mesh */
@@ -469,6 +475,25 @@ protected:
 protected:
 	/** Returns Mesh1P subobject **/
 	FORCEINLINE USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
+
+public:
+	void DriveCar(ABuggyPawn* Car);
+
+	void LeaveCar();
+
+	bool IsInCar() { return CurrentCar != nullptr; }
+
+public:
+	/** SpringArm to attach camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+		class USpringArmComponent* CameraBoom = nullptr;
+
+	/** third person camera */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Camera)
+		class UCameraComponent* CharacterCameraComponent = nullptr;
+
+private:
+	ABuggyPawn*	CurrentCar = nullptr;
 };
 
 

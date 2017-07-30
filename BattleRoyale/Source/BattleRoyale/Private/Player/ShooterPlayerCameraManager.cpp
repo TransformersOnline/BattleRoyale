@@ -7,8 +7,8 @@ AShooterPlayerCameraManager::AShooterPlayerCameraManager(const FObjectInitialize
 {
 	NormalFOV = 90.0f;
 	TargetingFOV = 60.0f;
-	ViewPitchMin = -87.0f;
-	ViewPitchMax = 87.0f;
+	ViewPitchMin = -89.0f;
+	ViewPitchMax = 89.0f;
 	bAlwaysApplyModifiers = true;
 }
 

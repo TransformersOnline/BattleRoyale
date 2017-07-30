@@ -39,5 +39,5 @@
 *.dll
 *.bin
 *.log
-BattleRoyale\Intermediate\
-BattleRoyale\Saved\
+/BattleRoyale/Intermediate/
+/BattleRoyale/Saved/

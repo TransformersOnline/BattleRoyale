@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "BattleRoyaleMode.h"
 #include "BattleRoyaleState.h"
+#include "BuggyPawn.h"
 #include "ShooterCharacter.h"
 #include "ShooterCharacterMovement.h"
 #include "ShooterPlayerController.h"

@@ -16,29 +16,6 @@ TMap<uint32, ABuggyPawn::FVehicleDesiredRPM> ABuggyPawn::BuggyDesiredRPMs;
 ABuggyPawn::ABuggyPawn(const FObjectInitializer& ObjectInitializer) : 
 	Super(ObjectInitializer)
 {
-	/** Camera strategy:
-	 *  We want to keep a constant distance between car's location and camera.
-	 *  We want to keep roll and pitch fixed
-	 *	We want to interpolate yaw very slightly
-	 *	We want to keep car almost constant in screen space width and height (i.e. if you draw a box around the car its center would be near constant and its dimensions would only vary on sharp turns or declines */
-
-	// Create a spring arm component
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm0"));
-	SpringArm->TargetOffset = FVector(0.f, 0.f, 400.f);
-	SpringArm->SetRelativeRotation( FRotator(0.f, 0.f, 0.f) );
-	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->TargetArmLength = 675.0f; 
-	SpringArm->bEnableCameraRotationLag = true;
-	SpringArm->CameraRotationLagSpeed = 7.f;
-	SpringArm->bInheritPitch = false;
-	SpringArm->bInheritRoll = false;	
-
-	// Create camera component 
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera0"));
-	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-	Camera->bUsePawnControlRotation = false;
-	Camera->FieldOfView = 90.f;
-
 	EngineAC = CreateDefaultSubobject<UAudioComponent>(TEXT("EngineAudio"));
 	EngineAC->SetupAttachment(GetMesh());
 
@@ -74,19 +51,9 @@ void ABuggyPawn::PostInitializeComponents()
 	}
 }
 
-void ABuggyPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	check(PlayerInputComponent);
-
-	PlayerInputComponent->BindAxis("MoveForward", this, &ABuggyPawn::MoveForward);
-	PlayerInputComponent->BindAxis("MoveRight", this, &ABuggyPawn::MoveRight);
-
-	PlayerInputComponent->BindAction("Handbrake", IE_Pressed, this, &ABuggyPawn::OnHandbrakePressed);
-	PlayerInputComponent->BindAction("Handbrake", IE_Released, this, &ABuggyPawn::OnHandbrakeReleased);
-}
-
 void ABuggyPawn::MoveForward(float Val)
 {
+	UE_LOG(LogOnlineGame, Log, TEXT("ABuggyPawn::MoveForward"));
 	UWheeledVehicleMovementComponent* VehicleMovementComp = GetVehicleMovementComponent();
 	if (VehicleMovementComp == nullptr)
 	{

@@ -23,10 +23,10 @@ class ABuggyPawn : public AWheeledVehicle
 	// End Actor overrides
 
 	// Begin Pawn overrides
-	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void TornOff() override;
 	virtual void UnPossessed() override;
+
 	// End Pawn overrides
 
 	/** Identifies if pawn is in its dying state */
@@ -81,13 +81,6 @@ class ABuggyPawn : public AWheeledVehicle
 	static bool GetVehicleDesiredRPM_AudioThread(const uint32 VehicleID, FVehicleDesiredRPM& OutDesiredRPM);
 
 private:
-	/** Spring arm that will offset the camera */
-	UPROPERTY(Category=Camera, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* SpringArm;
-
-	/** Camera component that will be our viewpoint */
-	UPROPERTY(Category = Camera, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* Camera;
 
 	/** AudioThread authoritative cache of desired RPM keyed by owner ID for SoundNodeVehicleEngine to reference */
 	static TMap<uint32, FVehicleDesiredRPM> BuggyDesiredRPMs;
@@ -221,10 +214,6 @@ protected:
 	void PlayDestructionFX();
 
 protected:
-	/** Returns SpringArm subobject **/
-	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
-	/** Returns Camera subobject **/
-	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
 	/** Returns EngineAC subobject **/
 	FORCEINLINE UAudioComponent* GetEngineAC() const { return EngineAC; }
 	/** Returns SkidAC subobject **/

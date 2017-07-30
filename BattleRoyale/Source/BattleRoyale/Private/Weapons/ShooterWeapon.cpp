@@ -211,6 +211,15 @@ void AShooterWeapon::DetachMeshFromPawn()
 	Mesh3P->SetHiddenInGame(true);
 }
 
+void AShooterWeapon::HandleLocalPawnChangeView(bool bFirstPersonView)
+{
+	Mesh1P->MeshComponentUpdateFlag = !bFirstPersonView ? EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered : EMeshComponentUpdateFlag::AlwaysTickPoseAndRefreshBones;
+	Mesh1P->SetOwnerNoSee(!bFirstPersonView);
+
+	Mesh3P->MeshComponentUpdateFlag = bFirstPersonView ? EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered : EMeshComponentUpdateFlag::AlwaysTickPoseAndRefreshBones;
+	Mesh3P->SetOwnerNoSee(bFirstPersonView);
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 // Input

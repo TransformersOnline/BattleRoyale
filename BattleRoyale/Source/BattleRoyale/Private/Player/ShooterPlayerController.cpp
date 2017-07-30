@@ -75,6 +75,10 @@ void AShooterPlayerController::SetupInputComponent()
 	InputComponent->BindAction("PushToTalk", IE_Released, this, &APlayerController::StopTalking);
 
 	InputComponent->BindAction("ToggleChat", IE_Pressed, this, &AShooterPlayerController::ToggleChatWindow);
+	InputComponent->BindAction("ChangePersonView", IE_Pressed, this, &AShooterPlayerController::ChangePersonView);
+	InputComponent->BindAction("FreeView", IE_Pressed, this, &AShooterPlayerController::FreeView);
+	InputComponent->BindAction("FreeView", IE_Released, this, &AShooterPlayerController::LockView);
+	InputComponent->BindAction("PickTarget", IE_Pressed, this, &AShooterPlayerController::PickTarget);
 }
 
 
@@ -1234,5 +1238,125 @@ void AShooterPlayerController::PreClientTravel(const FString& PendingURL, ETrave
 			// Passing true to bFocus here ensures that focus is returned to the game viewport.
 			ShooterHUD->ShowScoreboard(false, true);
 		}
+	}
+}
+
+void AShooterPlayerController::ChangePersonView()
+{
+	bFirstPersonView = !bFirstPersonView;
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (ShooterChar)
+	{
+		ShooterChar->HandleViewChanged();
+	}
+}
+
+void AShooterPlayerController::FreeView()
+{
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (ShooterChar)
+	{
+		CachedControlRotation = GetControlRotation();
+		ShooterChar->bUseControllerRotationYaw = false;
+	}
+}
+
+void AShooterPlayerController::LockView()
+{
+	SetControlRotation(CachedControlRotation);
+
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (ShooterChar)
+	{
+		ShooterChar->bUseControllerRotationYaw = true;
+	}
+}
+
+void AShooterPlayerController::PickTarget()
+{
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (!ShooterChar)
+	{
+		return;
+	}
+
+	if (ShooterChar->IsInCar())
+	{
+		ShooterChar->LeaveCar();
+		return;
+	}
+
+	AActor* PickedActor = PickTheNeareatActor();
+	if (Cast<ABuggyPawn>(PickedActor) != nullptr)
+	{
+		ShooterChar->DriveCar(Cast<ABuggyPawn>(PickedActor));
+		return;
+	}
+}
+
+AActor*	AShooterPlayerController::PickTheNeareatActor()
+{
+	if (!GetWorld())
+	{
+		return nullptr;
+	}
+
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (!ShooterChar)
+	{
+		return nullptr;
+	}
+
+	if (!ShooterChar->IsAlive())
+	{
+		return nullptr;
+	}
+
+	static FName PickTheNeareatActor(TEXT("PickTheNeareatActor"));
+	FCollisionQueryParams Params(PickTheNeareatActor, false,GetCharacter());
+	Params.bTraceAsyncScene = true;
+	TArray<FOverlapResult> Overlaps;
+
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECollisionChannel::ECC_Vehicle);
+
+	if (GetWorld()->OverlapMultiByObjectType(Overlaps, ShooterChar->GetActorLocation(), FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(300.f), Params))
+	{
+		FRotator CurViewRotation = FRotator::ZeroRotator;
+		FVector CurViewLocation = FVector::ZeroVector;
+		GetPlayerViewPoint(CurViewLocation, CurViewRotation);
+		FVector CurDir = CurViewRotation.Vector().GetSafeNormal();
+
+		float BestDotProduct = -1.f;
+		AActor* BestTarget = nullptr;
+		for (int32 idx = 0; idx < Overlaps.Num(); ++idx)
+		{
+			AActor* OverlappedActor = Overlaps[idx].GetActor();
+			if (!OverlappedActor)
+			{
+				continue;
+			}
+
+			FVector Dir = (OverlappedActor->GetActorLocation() - CurViewLocation).GetSafeNormal();
+			float DotProduct = (Dir | CurDir);
+			if (DotProduct > BestDotProduct || !BestTarget )
+			{
+				BestDotProduct = DotProduct;
+				BestTarget = OverlappedActor;
+			}
+		}
+
+		return BestTarget;
+	}
+
+	return nullptr;
+}
+
+void AShooterPlayerController::GetInTheCar(ABuggyPawn* Car)
+{
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (!ShooterChar)
+	{
+		return;
 	}
 }
