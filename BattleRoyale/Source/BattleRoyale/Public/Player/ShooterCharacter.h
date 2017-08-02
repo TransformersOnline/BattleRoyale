@@ -259,6 +259,7 @@ class AShooterCharacter : public ACharacter
 	/** Update the team color of all player meshes. */
 	void UpdateTeamColorsAllMIDs();
 
+	UFUNCTION()
 	void HandleViewChanged();
 
 private:
@@ -477,11 +478,19 @@ protected:
 	FORCEINLINE USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 
 public:
-	void DriveCar(ABuggyPawn* Car);
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerTryEnterCar(ABuggyPawn* Car);
 
-	void LeaveCar();
+	void HandleEnterCar(ABuggyPawn* Car,int32 SeatIndex);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerTryLeaveCar();
+
+	void HandleLeaveCar(int32 SeatIndex);
 
 	bool IsInCar() { return CurrentCar != nullptr; }
+	ABuggyPawn* GetCurrentCar() { return CurrentCar; }
+	bool GetIsDriver() { return IsDriver; }
 
 public:
 	/** SpringArm to attach camera */
@@ -492,8 +501,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Camera)
 		class UCameraComponent* CharacterCameraComponent = nullptr;
 
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = Camera)
+		FVector	FirstPersonEyeOffset = FVector(0.f,0.f, 63.5f);
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = Camera)
+		FVector ThirdPersonEyeOffset = FVector(0.f, 30.f, 90.f);
+
+	bool bFirstPersonView = false;
+
 private:
 	ABuggyPawn*	CurrentCar = nullptr;
+
+	bool		IsDriver = false;
 };
 
 

@@ -1243,21 +1243,37 @@ void AShooterPlayerController::PreClientTravel(const FString& PendingURL, ETrave
 
 void AShooterPlayerController::ChangePersonView()
 {
-	bFirstPersonView = !bFirstPersonView;
 	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
 	if (ShooterChar)
 	{
+		ShooterChar->bFirstPersonView = !ShooterChar->bFirstPersonView;
+		ShooterChar->HandleViewChanged();
+		ServerChangePersonView(ShooterChar->bFirstPersonView);
+	}
+}
+
+bool AShooterPlayerController::ServerChangePersonView_Validate(bool FirstPersonView)
+{
+	return true;
+}
+
+void AShooterPlayerController::ServerChangePersonView_Implementation(bool FirstPersonView)
+{
+	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
+	if (ShooterChar)
+	{
+		ShooterChar->bFirstPersonView = FirstPersonView;
 		ShooterChar->HandleViewChanged();
 	}
 }
 
 void AShooterPlayerController::FreeView()
 {
-	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
-	if (ShooterChar)
+	APawn* ControledPawn = GetPawn();
+	if (ControledPawn)
 	{
 		CachedControlRotation = GetControlRotation();
-		ShooterChar->bUseControllerRotationYaw = false;
+		ControledPawn->bUseControllerRotationYaw = false;
 	}
 }
 
@@ -1265,10 +1281,11 @@ void AShooterPlayerController::LockView()
 {
 	SetControlRotation(CachedControlRotation);
 
-	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
-	if (ShooterChar)
+	APawn* ControledPawn = GetPawn();
+	if (ControledPawn)
 	{
-		ShooterChar->bUseControllerRotationYaw = true;
+		CachedControlRotation = GetControlRotation();
+		ControledPawn->bUseControllerRotationYaw = true;
 	}
 }
 
@@ -1277,19 +1294,24 @@ void AShooterPlayerController::PickTarget()
 	AShooterCharacter* ShooterChar = Cast<AShooterCharacter>(GetCharacter());
 	if (!ShooterChar)
 	{
+		ABuggyPawn*	BuggyPawn = Cast<ABuggyPawn>(GetPawn());
+		if (BuggyPawn && MainChar)
+		{
+			BuggyPawn->ServerTryLeave(MainChar);
+		}
 		return;
 	}
 
 	if (ShooterChar->IsInCar())
 	{
-		ShooterChar->LeaveCar();
+		ShooterChar->ServerTryLeaveCar();
 		return;
 	}
 
 	AActor* PickedActor = PickTheNeareatActor();
 	if (Cast<ABuggyPawn>(PickedActor) != nullptr)
 	{
-		ShooterChar->DriveCar(Cast<ABuggyPawn>(PickedActor));
+		ShooterChar->ServerTryEnterCar(Cast<ABuggyPawn>(PickedActor));
 		return;
 	}
 }

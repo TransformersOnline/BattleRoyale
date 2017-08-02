@@ -1,4 +1,4 @@
-// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
+﻿// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -10,32 +10,35 @@
 class UVehicleDustType;
 class AVehicleImpactEffect;
 
+
 UCLASS()
 class ABuggyPawn : public AWheeledVehicle
 {
 	GENERATED_UCLASS_BODY()
 
-	// Begin Actor overrides
-	virtual void PostInitializeComponents() override;
+		// Begin Actor overrides
+		virtual void PostInitializeComponents() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalForce, const FHitResult& Hit) override;
 	virtual void FellOutOfWorld(const UDamageType& dmgType) override;
 	// End Actor overrides
 
 	// Begin Pawn overrides
+	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void TornOff() override;
 	virtual void UnPossessed() override;
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
 
 	// End Pawn overrides
 
 	/** Identifies if pawn is in its dying state */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Health, ReplicatedUsing = OnRep_Dying)
-	uint32 bIsDying:1;
+		uint32 bIsDying : 1;
 
 	/** replicating death on client */
 	UFUNCTION()
-	void OnRep_Dying();
+		void OnRep_Dying();
 
 	/** Returns True if the pawn can die in the current state */
 	virtual bool CanDie() const;
@@ -50,8 +53,8 @@ class ABuggyPawn : public AWheeledVehicle
 	//void OnTrackPointReached(AVehicleTrackPoint* TrackPoint);
 
 	/** is handbrake active? */
-	UFUNCTION(BlueprintCallable, Category="Game|Vehicle")
-	bool IsHandbrakeActive() const;
+	UFUNCTION(BlueprintCallable, Category = "Game|Vehicle")
+		bool IsHandbrakeActive() const;
 
 	/** get current speed */
 	float GetVehicleSpeed() const;
@@ -61,7 +64,7 @@ class ABuggyPawn : public AWheeledVehicle
 
 	/** get maximum RPM */
 	float GetEngineMaxRotationSpeed() const;
-		
+
 	//////////////////////////////////////////////////////////////////////////
 	// Input handlers
 
@@ -82,89 +85,107 @@ class ABuggyPawn : public AWheeledVehicle
 
 private:
 
+	/** Spring arm that will offset the camera */
+	UPROPERTY(Category = Camera, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+		USpringArmComponent* SpringArm;
+
+	/** Camera component that will be our viewpoint */
+	UPROPERTY(Category = Camera, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+		UCameraComponent* Camera;
+
+
 	/** AudioThread authoritative cache of desired RPM keyed by owner ID for SoundNodeVehicleEngine to reference */
 	static TMap<uint32, FVehicleDesiredRPM> BuggyDesiredRPMs;
 
 protected:
-
+	
 	/** dust FX config */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	UVehicleDustType* DustType;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		UVehicleDustType* DustType;
 
 	/** impact FX config */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	TSubclassOf<AVehicleImpactEffect> ImpactTemplate;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		TSubclassOf<AVehicleImpactEffect> ImpactTemplate;
 
 	/** The minimum amount of normal force that must be applied to the chassis to spawn an Impact Effect */
 	UPROPERTY(EditAnywhere, Category = Effects)
-	float ImpactEffectNormalForceThreshold;
+		float ImpactEffectNormalForceThreshold;
 
 	/** explosion FX */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	UParticleSystem* DeathFX;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		UParticleSystem* DeathFX;
 
 	/** explosion sound */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	USoundCue* DeathSound;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		USoundCue* DeathSound;
 
 	/** engine sound */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	USoundCue* EngineSound;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		USoundCue* EngineSound;
 
 private:
 	/** audio component for engine sounds */
 	UPROPERTY(Category = Effects, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	UAudioComponent* EngineAC;
+		UAudioComponent* EngineAC;
 protected:
 
 	/** landing sound */
 	UPROPERTY(Category = Effects, EditDefaultsOnly)
-	USoundCue* LandingSound;
+		USoundCue* LandingSound;
 
 	/** dust FX components */
 	UPROPERTY(Transient)
-	UParticleSystemComponent* DustPSC[4];
+		UParticleSystemComponent* DustPSC[4];
 
 	/** skid sound loop */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	USoundCue* SkidSound;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		USoundCue* SkidSound;
 
 	/** skid sound stop */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	USoundCue* SkidSoundStop;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		USoundCue* SkidSoundStop;
 
 	/** skid fadeout time */
 	UPROPERTY(Category = Effects, EditDefaultsOnly)
-	float SkidFadeoutTime;
+		float SkidFadeoutTime;
 
 	/** skid effects cannot play if velocity is lower than this */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	float SkidThresholdVelocity;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		float SkidThresholdVelocity;
 
 	/** skid effects will play if absolute value of tire longitudinal slip is more than this. */
 	UPROPERTY(Category = Effects, EditDefaultsOnly, meta = (ClampMin = "0.0", UIMin = "0.0", ClampMax = "1.0", UIMax = "1.0"))
-	float LongSlipSkidThreshold;
+		float LongSlipSkidThreshold;
 
 	/** skid effects will play if absolute value of tire lateral slip is more than this. */
 	UPROPERTY(Category = Effects, EditDefaultsOnly, meta = (ClampMin = "0.0", UIMin = "0.0", ClampMax = "1.0", UIMax = "1.0"))
-	float LateralSlipSkidThreshold;
+		float LateralSlipSkidThreshold;
+
+	UPROPERTY(Category = BuggyPawn, EditDefaultsOnly)
+		TArray<FName>	SeatsList;
+
+	UPROPERTY(Category = BuggyPawn, EditDefaultsOnly)
+		TArray<FName>	GetOffList;
+
+	// true : has someone false : empty
+	TArray<AShooterCharacter*>	SeatsState;
 
 private:
 	/** audio component for skid sounds */
 	UPROPERTY()
-	UAudioComponent* SkidAC;
+		UAudioComponent* SkidAC;
 protected:
 
 	/** The amount of spring compression required during landing to play sound */
 	UPROPERTY(Category = Effects, EditDefaultsOnly)
-	float SpringCompressionLandingThreshold;
+		float SpringCompressionLandingThreshold;
 
 	/** whether tires are currently touching ground */
 	bool bTiresTouchingGround;
 
 	/** if skidding is shorter than this value, SkidSoundStop won't be played */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	float SkidDurationRequiredForStopSound;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		float SkidDurationRequiredForStopSound;
 
 	/** is vehicle currently skidding */
 	bool bSkidding;
@@ -173,8 +194,8 @@ protected:
 	float SkidStartTime;
 
 	/** camera shake on impact */
-	UPROPERTY(Category=Effects, EditDefaultsOnly)
-	TSubclassOf<UCameraShake> ImpactCameraShake;
+	UPROPERTY(Category = Effects, EditDefaultsOnly)
+		TSubclassOf<UCameraShake> ImpactCameraShake;
 
 	/** How much throttle forward (max 1.0f) or reverse (max -1.0f) */
 	float ThrottleInput;
@@ -214,10 +235,61 @@ protected:
 	void PlayDestructionFX();
 
 protected:
+	/** Returns SpringArm subobject **/
+	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
+	/** Returns Camera subobject **/
+	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
 	/** Returns EngineAC subobject **/
 	FORCEINLINE UAudioComponent* GetEngineAC() const { return EngineAC; }
 	/** Returns SkidAC subobject **/
 	FORCEINLINE UAudioComponent* GetSkidAC() const { return SkidAC; }
+
+public:
+
+	void TryEnter(AShooterCharacter* Char);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void CharacterEnter(AShooterCharacter* Char, int32 SeatIndex);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerTryLeave(AShooterCharacter* Char);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void CharacterLeave(AShooterCharacter* Char);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void ServerTrySwitchSeat(AShooterCharacter* Char, int32 SeatIndex);
+	int32 FindANearestSeat(const FVector& Location);
+
+	FVector GetOffLocation(int32 SeatIndex);
+
+	FName	GetSeatName(int32 SeatIndex)
+	{
+		if (SeatsList.IsValidIndex(SeatIndex))
+		{
+			return SeatsList[SeatIndex];
+		}
+
+		return NAME_None;
+	}
+
+	int32	GetSeatIndex(AShooterCharacter* Char)
+	{
+		if (!Char)
+		{
+			return -1;
+		}
+
+		for (int32 SeatIndex = 0; SeatIndex < SeatsState.Num(); ++SeatIndex)
+		{
+			if (SeatsState[SeatIndex] == Char)
+			{
+				return SeatIndex;
+			}
+		}
+
+		return -1;
+	}
 };
 
 

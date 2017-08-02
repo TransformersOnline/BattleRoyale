@@ -1,4 +1,4 @@
-// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
+﻿// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 
 #include "BattleRoyale.h"
 #include "BuggyPawn.h"
@@ -16,6 +16,29 @@ TMap<uint32, ABuggyPawn::FVehicleDesiredRPM> ABuggyPawn::BuggyDesiredRPMs;
 ABuggyPawn::ABuggyPawn(const FObjectInitializer& ObjectInitializer) : 
 	Super(ObjectInitializer)
 {
+	/** Camera strategy:
+	*  We want to keep a constant distance between car's location and camera.
+	*  We want to keep roll and pitch fixed
+	*	We want to interpolate yaw very slightly
+	*	We want to keep car almost constant in screen space width and height (i.e. if you draw a box around the car its center would be near constant and its dimensions would only vary on sharp turns or declines */
+
+	// Create a spring arm component
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm0"));
+	SpringArm->TargetOffset = FVector(0.f, 0.f, 400.f);
+	SpringArm->SetRelativeRotation(FRotator(0.f, 0.f, 0.f));
+	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->TargetArmLength = 675.0f;
+	SpringArm->bEnableCameraRotationLag = true;
+	SpringArm->CameraRotationLagSpeed = 7.f;
+	SpringArm->bInheritPitch = false;
+	SpringArm->bInheritRoll = false;
+
+	// Create camera component 
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera0"));
+	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+	Camera->bUsePawnControlRotation = false;
+	Camera->FieldOfView = 90.f;
+
 	EngineAC = CreateDefaultSubobject<UAudioComponent>(TEXT("EngineAudio"));
 	EngineAC->SetupAttachment(GetMesh());
 
@@ -34,6 +57,19 @@ ABuggyPawn::ABuggyPawn(const FObjectInitializer& ObjectInitializer) :
 	ImpactEffectNormalForceThreshold = 100000.f;
 }
 
+
+void ABuggyPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	check(PlayerInputComponent);
+
+	PlayerInputComponent->BindAxis("MoveForward", this, &ABuggyPawn::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &ABuggyPawn::MoveRight);
+
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ABuggyPawn::OnHandbrakePressed);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ABuggyPawn::OnHandbrakeReleased);
+}
+
+
 void ABuggyPawn::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
@@ -49,6 +85,9 @@ void ABuggyPawn::PostInitializeComponents()
 		SkidAC->SetSound(SkidSound);
 		SkidAC->Stop();
 	}
+
+	SeatsState.Empty();
+	SeatsState.AddZeroed(SeatsList.Num());
 }
 
 void ABuggyPawn::MoveForward(float Val)
@@ -374,4 +413,133 @@ void ABuggyPawn::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABuggyPawn, bIsDying);
+}
+
+void ABuggyPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	if (bFindCameraComponentWhenViewTarget && Camera && Camera->bIsActive)
+	{
+		// don't allow FOV override, we handle that in UTPlayerController/UTPlayerCameraManager
+		Camera->GetCameraView(DeltaTime, OutResult);
+	}
+	else
+	{
+		GetActorEyesViewPoint(OutResult.Location, OutResult.Rotation);
+	}
+}
+
+
+void ABuggyPawn::TryEnter(AShooterCharacter* Char)
+{
+	UE_LOG(LogOnlineGame, Log, TEXT("ABuggyPawn::ServerTryEnter"));
+	if (!Char || !Char->IsAlive() )
+	{
+		return;
+	}
+
+	int32 SeatIndex = FindANearestSeat(Char->GetActorLocation());
+	if (SeatIndex < 0)
+	{
+		return;
+	}
+
+	if (Char->IsInCar() && Char->GetCurrentCar() != this)
+	{
+		Char->GetCurrentCar()->CharacterLeave(Char);
+	}
+
+	CharacterEnter(Char, SeatIndex);
+}
+
+void ABuggyPawn::CharacterEnter_Implementation(AShooterCharacter* Char, int32 SeatIndex)
+{
+	if (!Char || SeatIndex < 0)
+	{
+		return;
+	}
+
+	if (!SeatsState.IsValidIndex(SeatIndex))
+	{
+		return;
+	}
+
+	SeatsState[SeatIndex] = Char;
+	Char->HandleEnterCar(this,SeatIndex);
+}
+
+bool ABuggyPawn::ServerTryLeave_Validate(AShooterCharacter* Char)
+{
+	return true;
+}
+
+void ABuggyPawn::ServerTryLeave_Implementation(AShooterCharacter* Char)
+{
+	int32 SeatIndex = GetSeatIndex(Char);
+	if (SeatIndex >= 0)
+	{
+		CharacterLeave(Char);
+	}
+}
+
+void ABuggyPawn::CharacterLeave_Implementation(AShooterCharacter* Char)
+{
+	int32 SeatIndex = GetSeatIndex(Char);
+	if (SeatIndex >= 0)
+	{
+		SeatsState[SeatIndex] = nullptr;
+		Char->HandleLeaveCar(SeatIndex);
+	}
+}
+
+bool ABuggyPawn::ServerTrySwitchSeat_Validate(AShooterCharacter* Char, int32 SeatIndex)
+{
+	return true;
+}
+
+void ABuggyPawn::ServerTrySwitchSeat_Implementation(AShooterCharacter* Char, int32 SeatIndex)
+{
+	;
+}
+
+int32 ABuggyPawn::FindANearestSeat(const FVector& Location)
+{
+	if (!GetMesh())
+	{
+		return -1;
+	}
+
+	int32 NearestIndex = -1;
+	float NearestDistance = 99999.f;
+	for (int32 SeatIndex = 0; SeatIndex < SeatsList.Num(); ++SeatIndex)
+	{
+		if (!SeatsState.IsValidIndex(SeatIndex) || SeatsState[SeatIndex] != nullptr)
+		{
+			continue;
+		}
+
+		FVector SeatLocation = GetMesh()->GetSocketLocation(SeatsList[SeatIndex]);
+		float SeatDistance = (SeatLocation - Location).Size();
+		if (SeatDistance < NearestDistance)
+		{
+			NearestDistance = SeatDistance;
+			NearestIndex = SeatIndex;
+		}
+	}
+
+	return NearestIndex;
+}
+
+FVector ABuggyPawn::GetOffLocation(int32 SeatIndex)
+{
+	if (!GetMesh())
+	{
+		return GetActorLocation() + FVector(0.f,0.f,50.f);
+	}
+
+	if (GetOffList.IsValidIndex(SeatIndex))
+	{
+		return GetMesh()->GetSocketLocation(GetOffList[SeatIndex]);
+	}
+
+	return GetActorLocation() + FVector(0.f, 0.f, 50.f);
 }

@@ -179,6 +179,9 @@ public:
 
 	void ChangePersonView();
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerChangePersonView(bool FirstPersonView);
+
 	void FreeView();
 
 	void LockView();
@@ -284,6 +287,8 @@ public:
 
 	// End APlayerController interface
 
+	void SetMainChar(AShooterCharacter* Char) { MainChar = Char; }
+
 	FName	ServerSayString;
 
 	// Timer used for updating friends in the player tick.
@@ -292,7 +297,7 @@ public:
 	// For tracking whether or not to send the end event
 	bool bHasSentStartEvents;
 
-	bool bFirstPersonView = false;
+	
 
 private:
 
@@ -300,5 +305,7 @@ private:
 	FTimerHandle TimerHandle_ClientStartOnlineGame;
 
 	FRotator CachedControlRotation;
+
+	AShooterCharacter*	MainChar = nullptr;
 };
 

@@ -33,7 +33,7 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	Mesh1P = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("PawnMesh1P"));
 	Mesh1P->SetupAttachment(GetCapsuleComponent());
 	Mesh1P->bOnlyOwnerSee = true;
-	Mesh1P->bOwnerNoSee = false;
+	Mesh1P->bOwnerNoSee = true;
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->bReceivesDecals = false;
 	Mesh1P->MeshComponentUpdateFlag = EMeshComponentUpdateFlag::OnlyTickPoseWhenRendered;
@@ -43,7 +43,7 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	Mesh1P->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	GetMesh()->bOnlyOwnerSee = false;
-	GetMesh()->bOwnerNoSee = true;
+	GetMesh()->bOwnerNoSee = false;
 	GetMesh()->bReceivesDecals = false;
 	GetMesh()->SetCollisionObjectType(ECC_Pawn);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -108,6 +108,8 @@ void AShooterCharacter::PostInitializeComponents()
 			UGameplayStatics::PlaySoundAtLocation(this, RespawnSound, GetActorLocation());
 		}
 	}
+
+	HandleViewChanged();
 }
 
 void AShooterCharacter::Destroyed()
@@ -131,6 +133,12 @@ void AShooterCharacter::PawnClientRestart()
 	UpdateTeamColors(Mesh1PMID);
 
 	HandleViewChanged();
+
+	AShooterPlayerController*	ShooterController = Cast<AShooterPlayerController>(GetController());
+	if (ShooterController)
+	{
+		ShooterController->SetMainChar(this);
+	}
 }
 
 void AShooterCharacter::PossessedBy(class AController* InController)
@@ -139,6 +147,12 @@ void AShooterCharacter::PossessedBy(class AController* InController)
 
 	// [server] as soon as PlayerState is assigned, set team colors of this pawn for local player
 	UpdateTeamColorsAllMIDs();
+
+	AShooterPlayerController*	ShooterController = Cast<AShooterPlayerController>(InController);
+	if (ShooterController)
+	{
+		ShooterController->SetMainChar(this);
+	}
 }
 
 void AShooterCharacter::OnRep_PlayerState()
@@ -891,7 +905,10 @@ void AShooterCharacter::MoveForward(float Val)
 {
 	if (CurrentCar)
 	{
-		CurrentCar->MoveForward(Val);
+		if (IsDriver)
+		{
+			CurrentCar->MoveForward(Val);
+		}
 		return;
 	}
 
@@ -909,7 +926,10 @@ void AShooterCharacter::MoveRight(float Val)
 {
 	if (CurrentCar)
 	{
-		CurrentCar->MoveRight(Val);
+		if (IsDriver)
+		{
+			CurrentCar->MoveRight(Val);
+		}
 		return;
 	}
 
@@ -1148,6 +1168,15 @@ void AShooterCharacter::BeginDestroy()
 
 void AShooterCharacter::OnStartJump()
 {
+	if (CurrentCar)
+	{
+		if (IsDriver)
+		{
+			CurrentCar->OnHandbrakePressed();
+		}
+		return;
+	}
+
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
 	if (MyPC && MyPC->IsGameInputAllowed())
 	{
@@ -1157,6 +1186,15 @@ void AShooterCharacter::OnStartJump()
 
 void AShooterCharacter::OnStopJump()
 {
+	if (CurrentCar)
+	{
+		if (IsDriver)
+		{
+			CurrentCar->OnHandbrakeReleased();
+		}
+		return;
+	}
+
 	bPressedJump = false;
 	StopJumping();
 }
@@ -1279,8 +1317,7 @@ bool AShooterCharacter::IsFiring() const
 
 bool AShooterCharacter::IsFirstPerson() const
 {
-	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(GetController());
-	if (MyPC && MyPC->IsLocalPlayerController() && !MyPC->bFirstPersonView)
+	if (GetNetMode() != NM_DedicatedServer && IsLocallyControlled() && !bFirstPersonView)
 	{
 		return false;
 	}
@@ -1357,43 +1394,67 @@ void AShooterCharacter::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 
 void AShooterCharacter::HandleViewChanged()
 {
-	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(GetController());
-	if (MyPC)
+	if (CameraBoom)
 	{
-		if (CameraBoom)
+		if (bFirstPersonView)
 		{
-			if (MyPC->bFirstPersonView)
+			CameraBoom->TargetArmLength = 0.f;
+			CameraBoom->SetRelativeLocation(FirstPersonEyeOffset);
+		}
+		else
+		{
+			if (IsInCar())
 			{
-				CameraBoom->TargetArmLength = 0.f;
+				CameraBoom->TargetArmLength = 300.f;
 			}
 			else
 			{
-				if (IsInCar())
-				{
-					CameraBoom->TargetArmLength = 300.f;
-				}
-				else
-				{
-					CameraBoom->TargetArmLength = 100.f;
-				}
+				CameraBoom->TargetArmLength = 100.f;
 			}
 
-			UpdatePawnMeshes();
+			CameraBoom->SetRelativeLocation(ThirdPersonEyeOffset);
 		}
+	}
+
+	if (IsLocallyControlled())
+	{
+		UpdatePawnMeshes();
 	}
 }
 
-void AShooterCharacter::DriveCar(ABuggyPawn* Car)
+bool AShooterCharacter::ServerTryEnterCar_Validate(ABuggyPawn* Car)
 {
-	if (CurrentCar != nullptr)
+	return true;
+}
+
+void AShooterCharacter::ServerTryEnterCar_Implementation(ABuggyPawn* Car)
+{
+	if (!Car)
 	{
-		LeaveCar();
+		return;
 	}
-	
+	UE_LOG(LogOnlineGame, Log, TEXT("AShooterCharacter::TryEnterCar"));
+	Car->TryEnter(this);
+}
+
+void AShooterCharacter::HandleEnterCar(ABuggyPawn* Car, int32 SeatIndex)
+{
+	if (!Car)
+	{
+		return;
+	}
+
 	bUseControllerRotationYaw = false;
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Ignore);
-	AttachToActor(Car, FAttachmentTransformRules::SnapToTargetNotIncludingScale,FName(TEXT("Driver0")));
+	FName	SeatName = Car->GetSeatName(SeatIndex);
+	AttachToActor(Car, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SeatName);
 	CurrentCar = Car;
+	IsDriver = (SeatIndex == 0);
+	if (IsDriver && HasAuthority())
+	{
+		GetController()->Possess(Car);
+	}
+
 	HandleViewChanged();
 	UCharacterMovementComponent* pMovementComponent = GetCharacterMovement();
 	if (pMovementComponent)
@@ -1404,11 +1465,37 @@ void AShooterCharacter::DriveCar(ABuggyPawn* Car)
 	}
 }
 
-void AShooterCharacter::LeaveCar()
+bool AShooterCharacter::ServerTryLeaveCar_Validate()
+{
+	return true;
+}
+
+void AShooterCharacter::ServerTryLeaveCar_Implementation()
+{
+	if (CurrentCar)
+	{
+		CurrentCar->ServerTryLeave(this);
+	}
+}
+
+void AShooterCharacter::HandleLeaveCar(int32 SeatIndex)
 {
 	bUseControllerRotationYaw = true;
-	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	DetachFromActor(FDetachmentTransformRules::KeepRelativeTransform);
+	if (CurrentCar)
+	{
+		if (!SetActorLocation(CurrentCar->GetOffLocation(SeatIndex)))
+		{
+			SetActorLocation(GetActorLocation() + FVector(0.f, 0.f, 100.f));
+		}
+
+		if (IsDriver && HasAuthority())
+		{
+			CurrentCar->GetController()->Possess(this);
+		}
+	}
 	CurrentCar = nullptr;
+	IsDriver = false;
 	HandleViewChanged();
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Block);
 	UCharacterMovementComponent* pMovementComponent = GetCharacterMovement();
