@@ -148,6 +148,15 @@ void ABuggyPawn::Tick(float DeltaSeconds)
 			BuggyDesiredRPMs.Add(VehiclePCID, DesiredRPM);
 		});
 	}*/
+
+	if (HasAuthority() && SeatsState.IsValidIndex(0) && SeatsState[0] == nullptr)
+	{
+		UWheeledVehicleMovementComponent* VehicleMovementComp = GetVehicleMovementComponent();
+		if (VehicleMovementComp)
+		{
+			VehicleMovementComp->StopMovementImmediately();
+		}
+	}
 }
 
 void ABuggyPawn::UnPossessed()
@@ -486,6 +495,15 @@ void ABuggyPawn::CharacterLeave_Implementation(AShooterCharacter* Char)
 	int32 SeatIndex = GetSeatIndex(Char);
 	if (SeatIndex >= 0)
 	{
+		if (SeatIndex == 0)
+		{
+			UWheeledVehicleMovementComponent* VehicleMovementComp = GetVehicleMovementComponent();
+			if (VehicleMovementComp)
+			{
+				VehicleMovementComp->StopMovementImmediately();
+			}
+		}
+
 		SeatsState[SeatIndex] = nullptr;
 		Char->HandleLeaveCar(SeatIndex);
 	}
