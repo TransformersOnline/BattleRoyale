@@ -19,6 +19,10 @@ void ABattleRoyaleState::GetLifetimeReplicatedProps( TArray< FLifetimeProperty >
 	DOREPLIFETIME( ABattleRoyaleState, RemainingTime );
 	DOREPLIFETIME( ABattleRoyaleState, bTimerPaused );
 	DOREPLIFETIME( ABattleRoyaleState, TeamScores );
+	DOREPLIFETIME( ABattleRoyaleState, CurGameStatus );
+	DOREPLIFETIME(ABattleRoyaleState, RoundCount);
+	DOREPLIFETIME(ABattleRoyaleState, CurrentRoundRadius);
+	DOREPLIFETIME(ABattleRoyaleState, RoundCenter);
 }
 
 void ABattleRoyaleState::GetRankedMap(int32 TeamIndex, RankedPlayerMap& OutRankedMap) const
@@ -80,4 +84,42 @@ void ABattleRoyaleState::RequestFinishAndExitToMainMenu()
 		}
 	}
 
+}
+
+void  ABattleRoyaleState::SetRoundCount(int32 Count)
+{
+	RoundCount = Count;
+
+	CacheLastRoundCenter();
+
+	ResetRemainingTime();
+}
+
+void  ABattleRoyaleState::ResetRemainingTime()
+{
+	
+
+	RemainingTime = 300 - FMath::Min((RoundCount - 1) * 30, 240);
+}
+
+void  ABattleRoyaleState::CacheLastRoundCenter()
+{
+	if (RoundCount > 1)
+	{
+		LastRoundCenterCache = RoundCenter;
+	}
+	else
+	{
+		LastRoundCenterCache = FVector::ZeroVector;
+	}
+}
+
+void  ABattleRoyaleState::OnRep_RoundCount()
+{
+	CacheLastRoundCenter();
+}
+
+void  ABattleRoyaleState::OnRep_RoundCenter()
+{
+	;
 }

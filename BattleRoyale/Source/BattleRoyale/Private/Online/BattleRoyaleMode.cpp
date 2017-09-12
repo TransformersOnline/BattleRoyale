@@ -50,6 +50,13 @@ void ABattleRoyaleMode::InitGame(const FString& MapName, const FString& Options,
 	{
 		bPauseable = false;
 	}
+
+	ABattleRoyaleState* MyGameState = Cast<ABattleRoyaleState>(GameState);
+	if (MyGameState)
+	{
+		MyGameState->SetMatchStatus(EGameStatusType_Prepare);
+		MyGameState->RemainingTime = 300.f;
+	}
 }
 
 void ABattleRoyaleMode::SetAllowBots(bool bInAllowBots, int32 InMaxBots)
@@ -97,21 +104,21 @@ void ABattleRoyaleMode::DefaultTimer()
 			}
 			else if (GetMatchState() == MatchState::InProgress)
 			{
-				FinishMatch();
+				//FinishMatch();
 
-				// Send end round events
-				for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
-				{
-					AShooterPlayerController* PlayerController = Cast<AShooterPlayerController>(*It);
-					
-					if (PlayerController && MyGameState)
-					{
-						AShooterPlayerState* PlayerState = Cast<AShooterPlayerState>((*It)->PlayerState);
-						const bool bIsWinner = IsWinner(PlayerState);
-					
-						PlayerController->ClientSendRoundEndEvent(bIsWinner, MyGameState->ElapsedTime);
-					}
-				}
+				//// Send end round events
+				//for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
+				//{
+				//	AShooterPlayerController* PlayerController = Cast<AShooterPlayerController>(*It);
+				//	
+				//	if (PlayerController && MyGameState)
+				//	{
+				//		AShooterPlayerState* PlayerState = Cast<AShooterPlayerState>((*It)->PlayerState);
+				//		const bool bIsWinner = IsWinner(PlayerState);
+				//	
+				//		PlayerController->ClientSendRoundEndEvent(bIsWinner, MyGameState->ElapsedTime);
+				//	}
+				//}
 			}
 			else if (GetMatchState() == MatchState::WaitingToStart)
 			{
@@ -156,8 +163,9 @@ void ABattleRoyaleMode::HandleMatchHasStarted()
 	Super::HandleMatchHasStarted();
 
 	ABattleRoyaleState* const MyGameState = Cast<ABattleRoyaleState>(GameState);
-	MyGameState->RemainingTime = RoundTime;	
-	StartBots();	
+	MyGameState->SetRoundCount(1);
+	//MyGameState->RemainingTime = RoundTime;	
+	//StartBots();	
 
 	// notify players
 	for (FConstControllerIterator It = GetWorld()->GetControllerIterator(); It; ++It)
